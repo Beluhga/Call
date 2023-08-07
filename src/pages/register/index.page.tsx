@@ -6,6 +6,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { api } from "@/src/LB/axios";
+import { AxiosError } from "axios";
 
 const registerFormSchema = z.object({
     username: z.string()
@@ -32,13 +34,29 @@ export default function Register(){
     })
 
     const router = useRouter()
-        if(router.query.username) {
+        
+    useEffect(() => {
+        if(router.query.username){
             setValue('username', String(router.query.username)) // query serve pra pegar o nome na URL que esta o "username"
         }
-    useEffect(() => {},[router.query?.username, setValue])
+    },[router.query?.username, setValue])
 
     async function handleRegister(data: RegisterFormData) {
-        console.log(data)
+       try {
+        await api.post('/users', { // post para criat um usuario
+            name: data.name,
+            username: data.username
+            
+        })
+        
+       } catch (error){
+            if (error instanceof AxiosError && error?.response?.data?.message){
+                alert(error.response.data.message)
+                return;
+            }
+
+            console.error(error)
+       }
     }
     return(
         <Container>

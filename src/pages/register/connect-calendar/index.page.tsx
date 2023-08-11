@@ -1,24 +1,22 @@
-import { Button, Heading, MultiStep, Text, TextInput } from "@ignite-ui/react";
+import { Button, Heading, MultiStep, Text } from "@ignite-ui/react";
 import { Container, Header } from "../styles";
-import { ArrowRight } from "phosphor-react";
-import { z } from "zod";
-import { ConnectBox, ConnectItem } from "./styles";
+import { ArrowRight, Check } from "phosphor-react";
+import { AuthError, ConnectBox, ConnectItem } from "./styles";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 
-
-const registerFormSchema = z.object({
-    username: z.string()
-    .min(3, {message: 'Digite um nome valido "3 letras"'})
-    .regex(/^([a-z\\\\-]+)$/i,{
-        message: 'Só pode ter apenas letras'
-    })
-    .transform(username => username.toLowerCase()),
-    name: z.string().min(3, {message: 'O nome precisa ter pelo menos 3 letras'})
-})
-
-type RegisterFormData = z.infer<typeof registerFormSchema>
 
 export default function Register(){
-       
+    const session = useSession()
+    const router = useRouter()
+
+    console.log(session)
+
+    const temErrorDeAutenticacao = !!router.query.error //error de permissions
+    const temUsuarioLogado = session.status === 'authenticated'
+    async function handleConnectCalendar() {
+        await signIn('google')
+      }
 
    // async function handleRegister(data: RegisterFormData) {
       
@@ -38,19 +36,39 @@ export default function Register(){
 
             <ConnectBox>
                 <ConnectItem>
-                    <Text>Google Agenda</Text>
-                    <Button variant="secondary" size="sm">
-                        Conectar
+                  <Text>Google Agenda</Text>
+                    {temUsuarioLogado ? (
+
+                        <Button size="sm" disabled >
+                            Conectado
+                            <Check />
+                        </Button>
+
+                    ) : (
+                       
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleConnectCalendar}>
+                            Conectar
                         <ArrowRight />
-                    </Button>
+                        </Button>
+                )
+                }
                 </ConnectItem>
-            <Button type="submit" >
-                    Proximo passo
-                    <ArrowRight />
+
+                {temErrorDeAutenticacao && (
+                    <AuthError size="sm">
+                        Falha ao se conectar ao Google, verifique se você habilitou as
+                        permissões de acesso ao Google Calendar.
+                    </AuthError>
+                )}
+
+            <Button type="submit" disabled={!temUsuarioLogado}>
+                Proximo passo
+                <ArrowRight />
             </Button>
             </ConnectBox>
-           
-
         </Container>
     )
 }

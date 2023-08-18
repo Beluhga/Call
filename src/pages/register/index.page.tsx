@@ -6,7 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
-import { api } from "@/src/LB/axios";
+import { api } from "@/src/lib/axios";
 import { AxiosError } from "axios";
 
 const registerFormSchema = z.object({

@@ -1,17 +1,52 @@
 import { Adapter } from "next-auth/adapters"
 import { prisma } from "../prisma"
+import { NextApiRequest, NextApiResponse } from "next"
+import { destroyCookie, parseCookies } from "nookies"
 
-export  function PrismaAdapter(): Adapter {
+export  function PrismaAdapter(
+    req: NextApiRequest,
+    res: NextApiResponse,
+    ): Adapter {
     return {
       async createUser(user) {
-      },
-      async getUser(id) {
-        const user = await prisma.user.findFirstOrThrow({
-            where: {
-                id,
+        const {'@Call:userId': userIdOnCookies} = parseCookies({req}) //parseCookies({req}) = para buscar todos os cookies (userIdOnCookies = Id de usuario dos cookies)
 
+        if(!userIdOnCookies){
+            throw new Error('User ID not found on cookies.')
+        }
+
+        const prismaUSer = await prisma.user.update({ // conectar o usuario no prisma (no backEnd)
+            where: {
+                id: userIdOnCookies,
+            },
+            data: {
+                name: user.name,
+                email: user.email,
+                avatar: user.avatar
             },
         })
+
+        destroyCookie({res}, '@Call:userId', { // para apagar o cookie
+            path: '/',
+        })
+        return {
+            id: prismaUSer.id,
+            name: prismaUSer.name,
+            username: prismaUSer.username,
+            email: prismaUSer.email!,
+            emailVerified: null,
+            avatar: prismaUSer.avatar!,
+        }
+      },
+      async getUser(id) {
+        const user = await prisma.user.findUnique({
+            where: {
+                id,
+            },
+        })
+        if(!user){
+            return null
+        }
         return { // vais er chamada depois q usuario for criado
             id: user.id,
             name: user.name,
@@ -22,12 +57,17 @@ export  function PrismaAdapter(): Adapter {
         }
       },
       async getUserByEmail(email) {
-        const user = await prisma.user.findFirstOrThrow({
+        const user = await prisma.user.findUnique({
             where: {
                 email,
 
             },
         })
+
+        if(!user){
+            return null
+        }
+        
         return { // vais er chamada depois q usuario for criado
             id: user.id,
             name: user.name,
@@ -38,7 +78,7 @@ export  function PrismaAdapter(): Adapter {
         }
       },
       async getUserByAccount({ providerAccountId, provider }) {
-        const {user} = await prisma.account.findUniqueOrThrow({
+        const account = await prisma.account.findUnique({
             where: {
                 provider_provider_account_id: {
                     provider,
@@ -49,6 +89,11 @@ export  function PrismaAdapter(): Adapter {
                 user: true,
             },
         }) // quero encontra uma account caso nao encontre disparar um error
+        if (!account){
+            return null
+        }
+
+        const {user} = account
         return { 
             id: user.id,
             name: user.name,
@@ -111,7 +156,7 @@ export  function PrismaAdapter(): Adapter {
         }
       },
       async getSessionAndUser(sessionToken) {
-        const {user, ...session} = await prisma.session.findUniqueOrThrow({
+        const prismaSession = await prisma.session.findUnique({
             where: {
                 session_token: sessionToken,
             },
@@ -119,6 +164,13 @@ export  function PrismaAdapter(): Adapter {
                 user:true,
             },
         })
+
+        if (!prismaSession){
+           return null
+        }
+
+        const {user, ...session} = prismaSession
+        
         return {
             session: {
                 userId: session.user_id,
@@ -151,5 +203,12 @@ export  function PrismaAdapter(): Adapter {
             expires: prismaSession.expires,
         }
       },
+      async deleteSession(sessionToken){
+        await prisma.session.delete({
+            where: {
+                session_token: sessionToken,
+            }
+        })
+      }
     }
   }

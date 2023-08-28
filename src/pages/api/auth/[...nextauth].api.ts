@@ -42,11 +42,16 @@ export function buildNestAuthOptions( //para usar os tokens da aplicacao
           return '/register/connect-calendar/?error=permissions'
          } 
           return true
-        } 
+        },
+        async session({session, user}){
+          return {
+            ...session,
+            user,
+            }
+          }
+        }
       }
     }
-  }
-
 
 export default async function auth(req: NextApiRequest, res: NextApiResponse) {
   return await NextAuth(req, res, buildNestAuthOptions(req, res))
